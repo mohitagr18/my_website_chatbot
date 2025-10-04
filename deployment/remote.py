@@ -77,7 +77,7 @@ def send_message(resource_id: str, session_id: str, message: str, user_id: str):
     project = os.getenv("GOOGLE_CLOUD_PROJECT")
     location = os.getenv("GOOGLE_CLOUD_LOCATION")
     resource_name = f"projects/{project}/locations/{location}/reasoningEngines/{resource_id}"
-
+    print(f'resource name: {resource_name}')
     remote_app = agent_engines.get(resource_name=resource_name)
     
     print("Agent Response:")
