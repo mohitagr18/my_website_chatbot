@@ -2,8 +2,7 @@ from google.adk.agents import Agent
 import vertexai
 from vertexai.preview import rag
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-from mcp import StdioServerParameters
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 import os
 from dotenv import load_dotenv
 
@@ -65,12 +64,8 @@ def rag_retrieval(query: str) -> dict:
 # TOOL: GitHub MCP
 # ============================================================================
 GITHUB_MCP = MCPToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="npx",
-            args=["-y", "@modelcontextprotocol/server-github"],
-            env={"GITHUB_PERSONAL_ACCESS_TOKEN": os.environ.get("GITHUB_TOKEN", "")}
-        )
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://github-mcp-server-218722702133.us-east4.run.app/sse"
     )
 )
 
