@@ -87,39 +87,55 @@ if prompt := st.chat_input("Ask me anything about the portfolio..."):
                 # Update session_id for continuity
                 st.session_state.session_id = result.get("session_id")
                 
-                # Parse response - handle the dict format we saw in testing
+                # Parse response from events using correct structure
                 response_text = ""
-                citations = result.get("citations", [])
+                citations = []
                 
-                # Extract text from complex response format
                 events = result.get("events", [])
+                
+                # Process events to extract final text and contexts
                 for event in events:
-                    if isinstance(event, dict):
-                        # Look for final model response
-                        if event.get("role") == "model" and "parts" in event:
-                            for part in event["parts"]:
+                    if isinstance(event, dict) and "content" in event:
+                        content = event["content"]
+                        
+                        # Extract final model text response
+                        if content.get("role") == "model" and "parts" in content:
+                            for part in content["parts"]:
                                 if "text" in part:
-                                    response_text += part["text"]
-                        # Also extract from contexts if present
-                        if "contexts" in event:
-                            for ctx in event["contexts"]:
-                                if "source_uri" in ctx and ctx not in citations:
-                                    citations.append(ctx)
+                                    response_text = part["text"]  # Use latest text
+                        
+                        # Extract citations from function_response parts
+                        if content.get("role") == "user" and "parts" in content:
+                            for part in content["parts"]:
+                                if "function_response" in part:
+                                    fr = part["function_response"]
+                                    if "response" in fr and isinstance(fr["response"], dict):
+                                        contexts = fr["response"].get("contexts", [])
+                                        for ctx in contexts:
+                                            if isinstance(ctx, dict) and "text" in ctx:
+                                                citations.append({
+                                                    "text": ctx.get("text", "")[:200],
+                                                    "source_uri": ctx.get("source_uri", "RAG Corpus"),
+                                                    "distance": ctx.get("distance", "")
+                                                })
                 
                 # Fallback to result.response if no text extracted
                 if not response_text:
                     response_text = result.get("response", "No response received")
+
                 
                 # Display response
                 st.markdown(response_text)
                 
-                # Display citations
+                # Display citations if present
                 if citations:
-                    with st.expander("📚 Sources"):
+                    with st.expander(f"📚 Sources ({len(citations)} passages)"):
                         for i, cite in enumerate(citations, 1):
-                            st.markdown(f"**[{i}]** {cite.get('source_uri', 'Unknown')}")
-                            if cite.get('text'):
-                                st.caption(f"_{cite['text'][:200]}_")
+                            st.markdown(f"**Source {i}**")
+                            st.caption(f"📄 _{cite['text'][:150]}..._")
+                            if cite.get('distance'):
+                                st.caption(f"Relevance: {1 - float(cite['distance']):.2%}")
+                            st.markdown("---")
                 
                 # Add assistant message to history
                 st.session_state.messages.append({

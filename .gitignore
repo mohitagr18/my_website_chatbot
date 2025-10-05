@@ -143,6 +143,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+google_adk_venv/
 
 # Spyder project settings
 .spyderproject
