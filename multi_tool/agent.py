@@ -1,5 +1,6 @@
 """
 Portfolio agent with RAG and direct GitHub API access (no MCP).
+This file is designed for local testing with adk web
 """
 from google.adk.agents import Agent
 import vertexai
