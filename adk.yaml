@@ -1,0 +1,15 @@
+name: portfolio_multi_tool_agent_mcp
+description: Portfolio assistant with RAG and GitHub MCP
+agent: multi_tool/agent.py:agent_app
+requirements:
+  - google-adk>=1.7.0
+  - google-cloud-aiplatform[adk,agent_engines]>=1.101.0
+  - pydantic>=2.11.3
+  - python-dotenv>=1.1.0
+build_options:
+  installation:
+    - installation_scripts/install_mcp_server.sh
+env_vars:
+  RAG_CORPUS: ${RAG_CORPUS}
+  GITHUB_USERNAME: ${GITHUB_USERNAME}
+  GITHUB_TOKEN: ${GITHUB_TOKEN}
