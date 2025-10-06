@@ -40,10 +40,36 @@ with st.sidebar:
         st.rerun()
     
     st.markdown("---")
-    st.caption("Powered by Vertex AI Agent Engine + RAG")
+   
+
 
 # Main title
-st.title("Portfolio Chatbot")
+st.title("🤖 Mohit's Portfolio Chatbot")
+st.markdown("**Powered by Vertex AI Agent Engine + Vertex AI RAG + GitHub API**")
+
+# Introduction section
+with st.expander("ℹ️ About This Chatbot", expanded=False):
+    st.markdown("""
+    ### Hi! I'm Mohit's AI Portfolio Assistant
+    
+    I can help you explore Mohit Aggarwal's work in Data Science and Generative AI. 
+    I have access to:
+    
+    - 📚 **Technical Articles & Blog Posts** - Published work on AI agents, ML systems, and data science
+    - 💻 **GitHub Projects** - Live code repositories and project implementations
+    - 🎓 **Portfolio Information** - Education, experience, and technical skills
+    
+    #### Try asking me:
+    - *"List Mohit's repositories"*
+    - *"Summarize the hackathon article"*
+    - *"What projects involve AI agents?"*
+    - *"Summarize mcp_home_automation"*
+    - *"What are Mohit's technical skills?"*
+    - *"Tell me about the autogen_data_analyzer project"*
+    
+    💡 **Tip:** For GitHub projects, use underscores (e.g., "mcp_home_automation")
+    """)
+
 
 # Display chat messages
 for message in st.session_state.messages:

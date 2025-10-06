@@ -1,0 +1,172 @@
+"""
+Deploy multi-tool agent to Vertex AI Agent Engine using ModuleAgent.
+"""
+import os
+import sys
+from dotenv import load_dotenv
+import vertexai
+from vertexai import agent_engines
+
+load_dotenv()
+
+def get_env_vars_for_deployment():
+    """Get environment variables needed by the agent."""
+    env_vars = {}
+    
+    # Add RAG configuration
+    if os.getenv("RAG_CORPUS"):
+        env_vars["RAG_CORPUS"] = os.getenv("RAG_CORPUS")
+    if os.getenv("RAG_REGION"):
+        env_vars["RAG_REGION"] = os.getenv("RAG_REGION")
+    
+    # Add GitHub configuration for MCP
+    if os.getenv("GITHUB_USERNAME"):
+        env_vars["GITHUB_USERNAME"] = os.getenv("GITHUB_USERNAME")
+    
+    return env_vars
+
+
+def create_remote_agent():
+    """Deploy agent using ModuleAgent pattern."""
+    
+    # Get project root - the directory containing both deployment/ and multi_tool/
+    # When running as python -m deployment.remote, use cwd
+    project_root = os.getcwd()
+    
+    print("🚀 Deploying multi-tool agent to Agent Engine...")
+    print(f"   ✓ Project root: {project_root}")
+    
+    # Verify structure
+    multi_tool_path = os.path.join(project_root, "multi_tool")
+    if not os.path.exists(multi_tool_path):
+        raise FileNotFoundError(f"multi_tool directory not found at {multi_tool_path}")
+    if not os.path.exists(os.path.join(multi_tool_path, "__init__.py")):
+        raise FileNotFoundError(f"__init__.py not found in multi_tool")
+    if not os.path.exists(os.path.join(multi_tool_path, "agent.py")):
+        raise FileNotFoundError(f"agent.py not found in multi_tool")
+    
+    print(f"   ✓ multi_tool package verified")
+    
+    # Initialize Vertex AI
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    staging_bucket = os.environ.get("GOOGLE_CLOUD_STAGING_BUCKET")
+    
+    if not project:
+        raise ValueError("GOOGLE_CLOUD_PROJECT not set in .env")
+    if not staging_bucket:
+        raise ValueError("GOOGLE_CLOUD_STAGING_BUCKET not set in .env")
+    
+    vertexai.init(
+        project=project,
+        location=location,
+        staging_bucket=staging_bucket
+    )
+    
+    # Get environment variables for deployment
+    env_vars = get_env_vars_for_deployment()
+    
+    print("📦 Environment variables to deploy:")
+    for key, value in env_vars.items():
+        display_val = value[:50] + "..." if len(value) > 50 else value
+        print(f"   {key}: {display_val}")
+    
+    # Requirements
+    requirements = [
+        "google-adk>=1.7.0,<2.0.0",
+        "google-cloud-aiplatform[adk,agent_engines]>=1.49.0,<2.0.0",
+        "pydantic>=2.11.3,<3.0.0",
+        "python-dotenv>=1.1.0,<2.0.0",
+    ]
+    
+    print(f"📋 Requirements: {requirements}")
+    print(f"🪣 Using bucket: {staging_bucket}")
+    
+    # Deploy using ModuleAgent
+    # IMPORTANT: Pass project_root as extra_packages so multi_tool is at the right level
+    print("\n⏳ Creating Agent Engine resource...")
+    remote_app = agent_engines.create(
+        display_name="portfolio_multi_tool_agent",
+        description="Portfolio assistant with RAG and GitHub MCP",
+        agent_engine=agent_engines.ModuleAgent(
+            module_name="multi_tool.agent",
+            agent_name="root_agent",
+            register_operations={}
+        ),
+        requirements=requirements,
+        extra_packages=[project_root],  # Upload entire project root, not just multi_tool
+        env_vars=env_vars,
+    )
+    
+    print("\n" + "="*70)
+    print("✅ DEPLOYMENT SUCCESSFUL!")
+    print("="*70)
+    print(f"Resource Name: {remote_app.resource_name}")
+    print(f"Display Name: portfolio_multi_tool_agent")
+    print("\n📝 UPDATE YOUR .env FILE:")
+    print(f"AGENT_RESOURCE_NAME={remote_app.resource_name}")
+    print("="*70)
+    print("\n💡 Test with: streamlit run deployment/streamlit_app.py")
+    print("="*70 + "\n")
+    
+    return remote_app
+
+
+def delete_remote_agent(resource_name: str):
+    """Delete a deployed agent."""
+    print(f"🗑️  Deleting agent: {resource_name}")
+    
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    
+    vertexai.init(project=project, location=location)
+    agent_engines.delete(name=resource_name)
+    
+    print(f"✅ Agent deleted: {resource_name}")
+
+
+def list_remote_agents():
+    """List all deployed agents."""
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    
+    if not project:
+        raise ValueError("GOOGLE_CLOUD_PROJECT not set in .env")
+    
+    vertexai.init(project=project, location=location)
+    
+    print(f"📋 Listing agents in {project}/{location}...")
+    agents = agent_engines.list()
+    
+    for agent in agents:
+        print(f"\n  Name: {agent.display_name}")
+        print(f"  Resource: {agent.resource_name}")
+
+
+def main():
+    """CLI entry point."""
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  python -m deployment.remote create-agent")
+        print("  python -m deployment.remote delete-agent <resource_name>")
+        print("  python -m deployment.remote list-agents")
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    
+    if command == "create-agent":
+        create_remote_agent()
+    elif command == "delete-agent":
+        if len(sys.argv) < 3:
+            print("Error: delete-agent requires resource_name")
+            sys.exit(1)
+        delete_remote_agent(sys.argv[2])
+    elif command == "list-agents":
+        list_remote_agents()
+    else:
+        print(f"Unknown command: {command}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

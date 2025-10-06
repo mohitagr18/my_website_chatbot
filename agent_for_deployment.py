@@ -1,5 +1,5 @@
 """
-Portfolio agent with RAG and direct GitHub API access (no MCP).
+Standalone agent for deployment - all code in one file, no external imports.
 """
 from google.adk.agents import Agent
 import vertexai
@@ -121,21 +121,17 @@ def get_file_contents(owner: str, repo: str, path: str) -> str:
             timeout=30.0
         )
         
-        # Handle 404 - file not found
         if response.status_code == 404:
             return f"File not found: {path} in {owner}/{repo}. The file may not exist or the repository may be private."
         
-        # Handle other errors
         if response.status_code != 200:
             return f"Error accessing file: HTTP {response.status_code}. {response.text[:200]}"
         
-        # Parse response
         try:
             data = response.json()
         except json.JSONDecodeError:
             return f"Error: GitHub API returned invalid JSON. Response: {response.text[:500]}"
         
-        # Handle directory listing (array response)
         if isinstance(data, list):
             file_list = "\n".join([
                 f"- {item['name']} ({item['type']})" 
@@ -143,20 +139,16 @@ def get_file_contents(owner: str, repo: str, path: str) -> str:
             ])
             return f"Directory contents of {path or 'root'}:\n{file_list}"
         
-        # Handle file with content
         if "content" in data:
-            # Check if file is empty
             if data.get("size", 0) == 0:
                 return f"File exists but is empty: {path}"
             
-            # Decode base64 content
             try:
                 content = base64.b64decode(data["content"]).decode("utf-8")
                 return content
             except Exception as e:
                 return f"Error decoding file content: {str(e)}"
         
-        # Return metadata if no content
         return json.dumps(data, indent=2)
         
     except httpx.TimeoutException:
@@ -200,7 +192,7 @@ def get_repository_info(owner: str, repo: str) -> str:
 
 root_agent = Agent(
     name="multi_tool_bot",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash-exp",
     description="Portfolio assistant with documentation search and GitHub access",
     instruction=f"""You are a helpful portfolio assistant with access to two complementary data sources:
 
@@ -262,7 +254,7 @@ Brief 2-3 sentence introduction
 ## Additional Notes
 • Any other important details
 • Future work or recommendations
-• Citation: "Based on stored documentation" OR "Based on GitHub README" OR "Based on codebase analysis"
+• Citation: "Based on stored documentation" OR "Based on GitHub README" OR "Based on codebase analysis (README was not available or minimal)"
 
 ═══════════════════════════════════════════════════════════════════════════
 TOOL SELECTION GUIDE
@@ -270,36 +262,23 @@ TOOL SELECTION GUIDE
 
 SMART ROUTING STRATEGY:
 
-1. Analyze the query:
-   - Does it contain article keywords (article, blog, post, paper)?
-   - Does it match snake_case pattern (underscores)?
-   - Is it asking about code/projects?
-
-2. For ARTICLE queries (with keywords like "article", "blog", "post"):
-   → Use rag_retrieval ONLY
-
-3. For PROJECT queries (snake_case or asking about repos/code):
-   → SKIP RAG, go directly to GitHub
-   → Use get_file_contents({GITHUB_USERNAME}, "project_name", "README.md")
-
-4. For AMBIGUOUS queries (no clear indicator):
-   → Try rag_retrieval first
-   → If results DON'T match the query topic, try GitHub
-
-CRITICAL: Check if RAG results are actually relevant to the query!
+1. FIRST: Try RAG for article/documentation searches
+2. IF RAG returns no results or says "not found": Try GitHub (convert spaces to underscores)
 
 EXAMPLES:
-"Summarize mcp automation" (ambiguous, no underscores)
-→ Step 1: Try rag_retrieval("mcp automation")
-→ Step 2: Check results - do they mention "mcp automation" or "home automation"?
-→ Step 3: If NOT relevant, try GitHub: get_file_contents("mohitagr18", "mcp_home_automation", "README.md")
-
-"Summarize mcp_home_automation" (has underscore = repo name)
-→ SKIP RAG, go directly: get_file_contents("mohitagr18", "mcp_home_automation", "README.md")
+"Summarize mcp home automation"
+→ Step 1: Try rag_retrieval("mcp home automation")
+→ Step 2: If not found, try list_repositories() to find matching repo
+→ Step 3: Try get_file_contents(owner, "mcp_home_automation", "README.md")
 
 "Summarize the Hackathon article"
-→ Use rag_retrieval only (explicitly says "article")
+→ Use rag_retrieval (article title, not code project)
 
+"List my repositories"
+→ Use list_repositories()
+
+"What files are in autogen_data_analyzer?"
+→ Use get_file_contents(owner, "autogen_data_analyzer", "")
 
 ROUTING RULES:
 ✓ Descriptive titles with articles (the/a/an) → RAG first
@@ -399,7 +378,7 @@ Step 2a: IF README has substantial content (>100 chars):
    - Links to documentation or demos
    - Future plans or roadmap items
    - Any warnings or limitations
-   - Citation: "Based on GitHub README from [owner]/[repo_name]"
+   - Citation: "Based on GitHub README"
 
 Step 2b: IF README is missing/empty:
    Execute FULL codebase analysis:
