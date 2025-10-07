@@ -13,6 +13,7 @@ import httpx
 import base64
 import json
 from typing import Optional
+import feedparser
 
 load_dotenv()
 
@@ -145,6 +146,58 @@ def create_agent():
         except Exception as e:
             return json.dumps({"error": str(e)})
     
+    # Medium RSS tool
+        # Medium RSS tool
+    def list_medium_articles() -> str:
+        """List all Medium articles from RSS feed with timeout protection.
+        
+        Returns:
+            str: Formatted list of articles with metadata
+        """        
+        try:
+            rss_url = f"https://medium.com/feed/@{GITHUB_USERNAME}"
+            
+            # Use httpx with explicit timeout (same pattern as GitHub tools)
+            response = httpx.get(rss_url, timeout=30.0, follow_redirects=True)
+            response.raise_for_status()
+            
+            # Parse the fetched content
+            feed = feedparser.parse(response.content)
+            
+            if feed.bozo:
+                return f"Error parsing RSS feed: {feed.bozo_exception}"
+            
+            if not feed.entries:
+                return f"No articles found for @{GITHUB_USERNAME} on Medium."
+            
+            output = f"Found {len(feed.entries)} Medium articles by Mohit Aggarwal:\n\n"
+            
+            for idx, entry in enumerate(feed.entries, 1):
+                title = entry.get('title', 'No title')
+                published = entry.get('published', 'N/A')
+                link = entry.get('link', 'No link available')
+                
+                output += f"**{idx}. {title}**\n\n"  # Double newline + bold title
+                output += f"Published: {published}\n\n"  # Double newline
+                output += f"Link: {link}\n\n"  # Double newline
+                
+                # Add tags if available
+                tags = [tag.term for tag in entry.get('tags', [])]
+                if tags:
+                    output += f"   Tags: {', '.join(tags[:5])}\n"
+                
+                output += "\n"
+            
+            return output
+            
+        except httpx.TimeoutException:
+            return "Error: Request to Medium RSS feed timed out after 30 seconds. Please try again."
+        except httpx.HTTPStatusError as e:
+            return f"Error: Medium RSS feed returned status {e.response.status_code}"
+        except Exception as e:
+            return f"Error fetching Medium articles: {str(e)}"
+
+
     # Create agent with all tools - SHORTENED INSTRUCTION for now
     agent = Agent(
         name="multi_tool_bot",
@@ -154,7 +207,9 @@ def create_agent():
 
 1. **rag_retrieval(query)** - Searches stored documentation, articles, and blog posts
 
-2. **GitHub API functions** - Accesses live GitHub repositories for user {GITHUB_USERNAME}:
+2. **list_medium_articles()** - Fetches the latest Medium articles from RSS feed (auto-updated)
+
+3. **GitHub API functions** - Accesses live GitHub repositories for user {GITHUB_USERNAME}:
    - list_repositories(username) - List all repos
    - get_file_contents(owner, repo, path) - Read files or list directories
    - get_repository_info(owner, repo) - Get repo metadata
@@ -218,8 +273,24 @@ TOOL SELECTION GUIDE
 
 SMART ROUTING STRATEGY:
 
-1. FIRST: Try RAG for article/documentation searches
-2. IF RAG returns no results or says "not found": Try GitHub (convert spaces to underscores)
+1. For listing ALL articles (queries like "list articles", "what articles", "show Medium posts"):
+   → Use list_medium_articles() to get the live RSS feed
+   → This ensures you always get the latest articles without manual updates
+   → 🚨 CRITICAL: Return the COMPLETE output from list_medium_articles() WITHOUT any modification
+   → YOU MUST include ALL information returned: title, published date, Link/URL, and tags
+   → DO NOT summarize, shorten, or reformat the tool output
+   → DO NOT remove the Link/URL field - it is MANDATORY to include
+
+2. For summarizing or discussing a SPECIFIC article:
+   → Use rag_retrieval() with the article title or topic keywords
+   → This retrieves the full article content for detailed summaries
+
+3. For PROJECT queries (snake_case or asking about repos/code):
+   → Use GitHub tools
+
+4. For AMBIGUOUS queries:
+   → Try rag_retrieval first
+   → If results DON'T match the query topic, try GitHub
 
 EXAMPLES:
 "Summarize mcp home automation"
@@ -254,7 +325,21 @@ When asked "What tools do you have?", list BOTH tools clearly.
 → When asked to list repos, call list_repositories() WITHOUT providing a username parameter (it will default to {GITHUB_USERNAME})
 → List ALL repos found with brief descriptions
 
-3. ARTICLE SUMMARIES (RAG) - MUST BE EXTREMELY DETAILED:
+3. LISTING MEDIUM ARTICLES:
+→ When asked to list articles, call list_medium_articles()
+→ 🚨 CRITICAL RULE: Present the EXACT output returned by the tool
+→ DO NOT remove any fields, especially the Link/URL field
+→ DO NOT reformat or summarize the list
+→ If the tool returns:
+  1. Article Title
+     Published: Date
+     Link: URL
+     Tags: tag1, tag2
+  
+  Then you MUST show ALL of this information to the user
+→ The Link/URL is MANDATORY - never omit it
+
+4. ARTICLE SUMMARIES (RAG) - MUST BE EXTREMELY DETAILED:
 
 MANDATORY PROCESS:
 Step 1: Use rag_retrieval with the query
@@ -294,7 +379,7 @@ Step 3: Extract ALL the following information from contexts:
 Step 4: Write using ALL the information above
 Step 5: Add citation: "Based on stored documentation."
 
-4. PROJECT SUMMARIES (GitHub) - MUST BE EXTREMELY DETAILED:
+5. PROJECT SUMMARIES (GitHub) - MUST BE EXTREMELY DETAILED:
 
 For "Summarize [project_name]":
 
@@ -387,7 +472,7 @@ Step 2b: IF README is missing/empty:
 → YOU MUST READ ACTUAL CODE FILES. Don't give up!
 → MINIMUM 400-600 WORDS for GitHub summaries
 
-5. CRITICAL QUALITY CHECKS BEFORE RESPONDING:
+6. CRITICAL QUALITY CHECKS BEFORE RESPONDING:
 
 Before sending ANY summary, verify:
 ☐ Is it 4-6 sections with headers? (If NO → add sections)
@@ -407,8 +492,9 @@ RESPONSE STYLE
 - Use technical language appropriately
 - Include specific details, not generalizations
 - Format with clear headers and bullet points
-- Always cite sources at the end""",
-        tools=[rag_retrieval, list_repositories, get_file_contents, get_repository_info]
+- Always cite sources at the end
+- When listing articles or repos: preserve ALL fields from tool output, especially URLs/Links""",
+        tools=[rag_retrieval, list_medium_articles, list_repositories, get_file_contents, get_repository_info]
     )
     
     return agent
@@ -450,6 +536,7 @@ def create_remote_agent():
         "pydantic>=2.11.3,<3.0.0",
         "python-dotenv>=1.1.0,<2.0.0",
         "httpx>=0.27.0,<1.0.0",
+        "feedparser>=6.0.0,<7.0.0"
     ]
     
     print(f"📋 Requirements: {requirements}")

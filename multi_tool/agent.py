@@ -9,6 +9,7 @@ import os
 import httpx
 import base64
 import json
+import feedparser
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -194,6 +195,56 @@ def get_repository_info(owner: str, repo: str) -> str:
         
     except Exception as e:
         return json.dumps({"error": str(e)})
+
+# Add the function:
+# In multi_tool/agent.py, add this function before the Agent definition:
+
+def list_medium_articles() -> str:
+    """List all Medium articles from RSS feed with timeout protection.
+    
+    Returns:
+        str: Formatted list of articles with metadata
+    """
+    import feedparser
+    
+    try:
+        rss_url = f"https://medium.com/feed/@{GITHUB_USERNAME}"
+        
+        # Use httpx with explicit timeout
+        response = httpx.get(rss_url, timeout=30.0, follow_redirects=True)
+        response.raise_for_status()
+        
+        # Parse the fetched content
+        feed = feedparser.parse(response.content)
+        
+        if feed.bozo:
+            return f"Error parsing RSS feed: {feed.bozo_exception}"
+        
+        if not feed.entries:
+            return f"No articles found for @{GITHUB_USERNAME} on Medium."
+        
+        output = f"Found {len(feed.entries)} Medium articles:\n\n"
+        
+        for idx, entry in enumerate(feed.entries, 1):
+            output += f"{idx}. {entry.get('title', 'No title')}\n"
+            output += f"   Published: {entry.get('published', 'N/A')}\n"
+            output += f"   Link: {entry.get('link', 'N/A')}\n"
+            
+            tags = [tag.term for tag in entry.get('tags', [])]
+            if tags:
+                output += f"   Tags: {', '.join(tags[:5])}\n"
+            
+            output += "\n"
+        
+        return output
+        
+    except httpx.TimeoutException:
+        return "Error: Request to Medium RSS feed timed out after 30 seconds."
+    except httpx.HTTPStatusError as e:
+        return f"Error: Medium RSS feed returned status {e.response.status_code}"
+    except Exception as e:
+        return f"Error fetching Medium articles: {str(e)}"
+
 
 # ============================================================================
 # ROOT AGENT
@@ -474,5 +525,5 @@ RESPONSE STYLE
 - Include specific details, not generalizations
 - Format with clear headers and bullet points
 - Always cite sources at the end""",
-    tools=[rag_retrieval, list_repositories, get_file_contents, get_repository_info]
+    tools=[rag_retrieval, list_medium_articles, list_repositories, get_file_contents, get_repository_info]
 )
