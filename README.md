@@ -1,6 +1,6 @@
 # 🤖 Portfolio Chatbot with Multi-Tool Agent
 
-This project implements an AI-powered portfolio chatbot for Mohit Aggarwal, a Technical Product Manager at Public Storage. The chatbot can answer questions about his work by accessing two distinct data sources: technical articles via Vertex AI RAG Engine and live code repositories via the GitHub API. This provides a comprehensive, interactive way to explore his professional portfolio.
+This project implements an AI-powered portfolio chatbot for Mohit Aggarwal. The chatbot can answer questions about Mohit's work by accessing two distinct data sources: technical articles via Vertex AI RAG Engine and live code repositories via the GitHub API. This provides a comprehensive, interactive way to explore his professional portfolio.
 
 The agent is built with the Google Agent Development Kit (ADK) and deployed as a serverless application on Vertex AI Agent Engine, with a user-friendly Streamlit interface for interaction.
 
