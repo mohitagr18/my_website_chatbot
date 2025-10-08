@@ -128,7 +128,7 @@ with st.sidebar:
 
 # Main title
 st.title("🤖 Mohit's Portfolio Chatbot")
-st.markdown("**Powered by Google Agent Development Kit (ADK) and Vertex AI Agent Engine**")
+st.markdown("**Built with Google ADK • Vertex AI Agent Engine • Streamlit on Cloud Run**")
 st.caption("📊 Data sources: Vertex AI RAG Engine • Medium RSS Feed • GitHub API")
 
 

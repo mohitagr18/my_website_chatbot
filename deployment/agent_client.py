@@ -10,7 +10,7 @@ from vertexai import agent_engines
 def init_vertexai():
     """Initialize Vertex AI with project and location from env."""
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east4")
     
     if not project:
         raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is required")
