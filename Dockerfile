@@ -1,12 +1,15 @@
 FROM python:3.11-slim
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all files
+# Copy all application files
 COPY . .
 
 # Expose port
@@ -15,14 +18,5 @@ EXPOSE 8080
 # Set environment
 ENV PORT=8080
 
-# Health check
-HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health || exit 1
-
-# Run Streamlit
-CMD streamlit run streamlit_app.py \
-    --server.port=8080 \
-    --server.address=0.0.0.0 \
-    --server.headless=true \
-    --server.enableCORS=false \
-    --server.enableXsrfProtection=false \
-    --server.baseUrlPath=""
+# Run Streamlit from deployment folder
+CMD ["streamlit", "run", "deployment/streamlit_app.py"]
