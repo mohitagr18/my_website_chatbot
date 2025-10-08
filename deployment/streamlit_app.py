@@ -1,6 +1,7 @@
 """
 Streamlit chat interface for the multi-tool portfolio agent.
 """
+
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -16,62 +17,146 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS for better typography and readability
+st.markdown("""
+<style>
+    /* Increase base font size */
+    .stMarkdown, .stMarkdown p, .stMarkdown div {
+        font-size: 17px !important;
+        line-height: 1.7 !important;
+    }
+    
+    /* Header sizing - works in both light and dark mode */
+    .stMarkdown h2 {
+        font-size: 22px !important;
+        font-weight: 600 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+        color: inherit !important;
+    }
+    
+    .stMarkdown h3 {
+        font-size: 19px !important;
+        font-weight: 600 !important;
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+        color: inherit !important;
+    }
+    
+    /* Improve bullet points - force proper list rendering */
+    .stMarkdown ul, .stMarkdown ol {
+        font-size: 17px !important;
+        line-height: 1.7 !important;
+        margin-left: 1.5rem !important;
+        padding-left: 0.5rem !important;
+    }
+    
+    .stMarkdown li {
+        margin-bottom: 0.5rem !important;
+        display: list-item !important;
+    }
+    
+    /* Better link styling */
+    .stMarkdown a {
+        font-size: 17px !important;
+        font-weight: 500 !important;
+        text-decoration: underline !important;
+    }
+    
+    /* Code and inline elements */
+    .stMarkdown code {
+        font-size: 16px !important;
+    }
+    
+    /* Improve spacing for better readability */
+    .stMarkdown p {
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Chat message container improvements */
+    .stChatMessage {
+        font-size: 17px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# Sidebar
+# Sidebar with enhanced content
 with st.sidebar:
-    st.title("🤖 Portfolio Assistant")
+    st.title("🤖 Mohit's AI Assistant")
+    st.markdown("---")
+    
     st.markdown("""
-    Ask me about:
-    - Projects and portfolio
-    - Medium articles
-    - GitHub repositories
-    - Skills and experience
+    ### About This Chatbot
+    I can help you explore Mohit Aggarwal's work in Data Science and Generative AI.
+    
+    **I have access to:**
+    - 📚 **Technical Articles & Blog Posts**
+    - 💻 **GitHub Projects**  
+    - 🎓 **Portfolio Information** (Experience, Education, Skills)
     """)
     
+    st.markdown("---")
+    st.markdown("### Quick Links")
+    st.markdown("- [**My Website**](https://mohitagr18.github.io)")
+    st.markdown("- [**My Medium**](https://medium.com/@mohitagr18)")
+    st.markdown("- [**My GitHub**](https://github.com/mohitagr18)")
+    
+    st.markdown("---")
+    st.markdown("""
+    ### Example Queries
+    - *"Tell me about Mohit"*
+    - *"What projects does Mohit have?"*
+    - *"List my articles"*
+    - *"Summarize the hackathon article"*
+    - *"What are Mohit's technical skills?"*
+    - *"Tell me about mcp_home_automation"*
+    
+    💡 **Tip:** Use underscores for GitHub project names
+    """)
+    
+    st.markdown("---")
     if st.button("Clear Chat History"):
         st.session_state.messages = []
         st.session_state.session_id = None
         st.rerun()
-    
-    st.markdown("---")
-   
-
 
 # Main title
 st.title("🤖 Mohit's Portfolio Chatbot")
-st.markdown("**Powered by Vertex AI Agent Engine + Vertex AI RAG + GitHub API**")
-
-# Introduction section
-with st.expander("ℹ️ About This Chatbot", expanded=False):
-    st.markdown("""
-    ### Hi! I'm Mohit's AI Portfolio Assistant
-    
-    I can help you explore Mohit Aggarwal's work in Data Science and Generative AI. 
-    I have access to:
-    
-    - 📚 **Technical Articles & Blog Posts** - Published work on AI agents, ML systems, and data science
-    - 💻 **GitHub Projects** - Live code repositories and project implementations
-    - 🎓 **Portfolio Information** - Education, experience, and technical skills
-    
-    #### Try asking me:
-    - *"List Mohit's repositories"*
-    - *"Summarize the hackathon article"*
-    - *"What projects involve AI agents?"*
-    - *"Summarize mcp_home_automation"*
-    - *"What are Mohit's technical skills?"*
-    - *"Tell me about the autogen_data_analyzer project"*
-    
-    💡 **Tip:** For GitHub projects, use underscores (e.g., "mcp_home_automation")
-    """)
+st.markdown("**Powered by Google Agent Development Kit (ADK) and Vertex AI Agent Engine**")
+st.caption("📊 Data sources: Vertex AI RAG Engine • Medium RSS Feed • GitHub API")
 
 
-# Display chat messages
+# Welcome message when chat is empty
+if not st.session_state.messages:
+    st.info("👋 Hi! I'm Mohit's AI Portfolio Assistant. Ask me about projects, articles, skills, or experience!")
+
+# Always show example queries in an expander (whether chat is empty or not)
+with st.expander("💡 Example Queries", expanded=(not st.session_state.messages)):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        **About Mohit:**
+        - Tell me about Mohit
+        - What are Mohit's technical skills?
+        - Where did Mohit go to school?
+        """)
+        
+    with col2:
+        st.markdown("""
+        **Projects & Articles:**
+        - What projects does Mohit have?
+        - List my articles
+        - Summarize the hackathon article
+        """)
+
+# Display chat messages 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -84,8 +169,8 @@ for message in st.session_state.messages:
                     if cite.get('text'):
                         st.caption(f"_{cite['text']}_")
 
-# Chat input
-if prompt := st.chat_input("Ask me anything about the portfolio..."):
+# Chat input 
+if prompt := st.chat_input("Ask me anything about projects, articles, skills, or experience..."):
     # Add user message to chat
     st.session_state.messages.append({"role": "user", "content": prompt})
     
@@ -116,7 +201,6 @@ if prompt := st.chat_input("Ask me anything about the portfolio..."):
                 # Parse response from events using correct structure
                 response_text = ""
                 citations = []
-                
                 events = result.get("events", [])
                 
                 # Process events to extract final text and contexts
@@ -148,7 +232,6 @@ if prompt := st.chat_input("Ask me anything about the portfolio..."):
                 # Fallback to result.response if no text extracted
                 if not response_text:
                     response_text = result.get("response", "No response received")
-
                 
                 # Display response
                 st.markdown(response_text)

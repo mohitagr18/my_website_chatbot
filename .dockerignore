@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+google_adk_venv/
+.venv
+.env
+.git
+.gitignore
+*.md
+*.pdf
+.DS_Store
