@@ -1,28 +1,28 @@
-# Use Python 3.11 slim image
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy requirements first (for caching)
+# Copy requirements
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application files
+# Copy all files
 COPY . .
 
-# Expose port 8080 (Cloud Run default)
+# Expose port
 EXPOSE 8080
 
-# Set environment variable
+# Set environment
 ENV PORT=8080
+
+# Health check
+HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health || exit 1
 
 # Run Streamlit
 CMD streamlit run streamlit_app.py \
-    --server.port=$PORT \
+    --server.port=8080 \
     --server.address=0.0.0.0 \
     --server.headless=true \
     --server.enableCORS=false \
-    --server.enableXsrfProtection=false
+    --server.enableXsrfProtection=false \
+    --server.baseUrlPath=""
